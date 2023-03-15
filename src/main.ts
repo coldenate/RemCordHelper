@@ -1,24 +1,12 @@
 import { app, BrowserWindow } from "electron";
-import * as net from "net";
 import { Client } from "@xhayper/discord-rpc";
+const express = require("express");
 
 const isSecondInstance = app.requestSingleInstanceLock();
 
 if (!isSecondInstance) {
 	app.quit();
 }
-
-// RPC.setActivity({
-//     details: 'RemNote',
-//     state: 'Editing',
-//     startTimestamp: Date.now(),
-//     largeImageKey: 'mocha_logo',
-//     largeImageText: 'RemNote',
-//     smallImageKey: 'transparent_icon_logo',
-//     smallImageText: 'RemNote',
-//     instance: false,
-//     buttons:[{label: "Join RemNote Discord", url: "https://discord.gg/3Z2Q9Zm"}]
-//   });
 
 const client = new Client({
 	clientId: "1083778386708676728",
@@ -30,16 +18,43 @@ client.on("ready", () => {
 
 client.login();
 
-const PORT = 8080;
+const appServer = express();
+const PORT = 3093;
 
 let mainWindow: Electron.BrowserWindow | null;
-let server: net.Server;
+
+appServer.use(express.json());
+
+appServer.use((_req, res, next) => {
+	res.header("Access-Control-Allow-Origin", "*");
+	res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE");
+	res.header(
+		"Access-Control-Allow-Headers",
+		"Origin, X-Requested-With, Content-Type, Accept"
+	);
+	next();
+});
+
+appServer.post("/activity", (req, res) => {
+	const json = req.body;
+	client.user?.setActivity({
+		details: json.details,
+		state: json.state,
+		startTimestamp: Date.now(),
+		largeImageKey: json.largeImageKey,
+		largeImageText: json.largeImageText,
+		smallImageKey: json.smallImageKey,
+		smallImageText: json.smallImageText,
+		instance: false,
+	});
+	res.json({ success: true });
+});
 
 function createWindow() {
 	mainWindow = new BrowserWindow({
 		width: 800,
 		height: 600,
-		show: false, // hide the app window when it is created
+		show: false,
 		minimizable: true,
 		webPreferences: {
 			nodeIntegration: true,
@@ -47,40 +62,8 @@ function createWindow() {
 	});
 	mainWindow.loadFile("src/index.html");
 
-	server = net.createServer((socket) => {
-		socket.on("data", (data) => {
-			try {
-				// convert the data buffer to a string
-				const dataString = data.toString();
-
-				// split the data into headers and body
-				const [headers, body] = dataString.split("\r\n\r\n");
-
-				// parse the JSON body
-				const json = JSON.parse(body);
-				// process the JSON object
-				client.user?.setActivity({
-					details: json.details,
-					state: json.state,
-					startTimestamp: Date.now(),
-					largeImageKey: json.largeImageKey,
-					largeImageText: json.largeImageText,
-					smallImageKey: json.smallImageKey,
-					smallImageText: json.smallImageText,
-					instance: false,
-				});
-			} catch (error) {
-				console.error(`Error parsing JSON: ${error}`);
-			}
-		});
-	});
-
-	server.listen(PORT, () => {
+	appServer.listen(PORT, () => {
 		console.log(`Server listening on port ${PORT}`);
-	});
-
-	// Show the app window when the server is ready
-	server.on("listening", () => {
 		mainWindow?.show();
 	});
 
@@ -90,9 +73,7 @@ function createWindow() {
 }
 
 function closeServer() {
-	if (server) {
-		server.close();
-	}
+	appServer.close();
 }
 
 app.on("before-quit", () => {
