@@ -57,7 +57,7 @@ function checkHeartbeat() {
     // console.log(`Alive: ${alive}`);
 }
 // Check heartbeat every 15 seconds
-// setInterval(checkHeartbeat, 15000);
+setInterval(checkHeartbeat, 15000);
 if (!isSecondInstance) {
     electron_1.app.quit();
 }
@@ -70,7 +70,6 @@ appServer.use(function (_req, res, next) {
 });
 appServer.post("/heartbeat", function (req, res) {
     var json = req.body;
-    console.log("heartbeat");
     if (json.heartbeat) {
         // alive is true.
         alive = true;
@@ -142,41 +141,29 @@ function updateTray() {
             }
         },
         {
-            label: "Status: ".concat(loggedIn ? "Connected" : "Disconnected"),
+            label: "Discord RPC Status: ".concat(loggedIn ? "Connected" : "Disconnected"),
             enabled: false
         },
         {
-            label: "Reconnect",
+            label: "Reconnect to Discord",
             click: function () {
                 attemptConnection();
             }
+        },
+        {
+            label: "RemNote Connection Status: ".concat(alive ? "Connected" : "Disconnected"),
+            enabled: false
         },
     ]);
     tray.setToolTip("RemCord Rich Presence");
     tray.setContextMenu(contextMenu);
 }
 electron_1.app.whenReady().then(function () {
-    // mainWindow = new BrowserWindow({
-    // 	width: 800,
-    // 	height: 600,
-    // 	show: false,
-    // 	minimizable: true,
-    // 	webPreferences: {
-    // 		nodeIntegration: true,
-    // 	},
-    // });
-    // mainWindow.loadFile("src/index.html");
     electron_1.app.dock.hide();
     var iconPath = path.join(__dirname, "../public/assets/icon.png");
     var icon = electron_1.nativeImage.createFromPath(iconPath);
     icon.resize({ width: 16, height: 16 });
     tray = new electron_1.Tray(icon);
-    // make a context menu that has the following,
-    // - a title
-    // - a quit button
-    // - a status indicator to show if loggedIn is true ornot
-    // - a reconnect to discord button
-    // - open github repo button
     attemptConnection(); // TODO: implement RECONNECT BUTTON
     updateTray();
     serverInstance = appServer.listen(PORT, function () {

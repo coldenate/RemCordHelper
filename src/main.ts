@@ -74,7 +74,7 @@ function checkHeartbeat() {
 }
 
 // Check heartbeat every 15 seconds
-// setInterval(checkHeartbeat, 15000);
+setInterval(checkHeartbeat, 15000);
 
 if (!isSecondInstance) {
 	app.quit();
@@ -94,7 +94,6 @@ appServer.use((_req, res, next) => {
 
 appServer.post("/heartbeat", (req, res) => {
 	const json = req.body;
-	console.log("heartbeat");
 	if (json.heartbeat) {
 		// alive is true.
 		alive = true;
@@ -169,14 +168,22 @@ function updateTray() {
 			},
 		},
 		{
-			label: `Status: ${loggedIn ? "Connected" : "Disconnected"}`,
+			label: `Discord RPC Status: ${
+				loggedIn ? "Connected" : "Disconnected"
+			}`,
 			enabled: false,
 		},
 		{
-			label: "Reconnect",
+			label: "Reconnect to Discord",
 			click: () => {
 				attemptConnection();
 			},
+		},
+		{
+			label: `RemNote Connection Status: ${
+				alive ? "Connected" : "Disconnected"
+			}`,
+			enabled: false,
 		},
 	]);
 
@@ -185,16 +192,6 @@ function updateTray() {
 }
 
 app.whenReady().then(() => {
-	// mainWindow = new BrowserWindow({
-	// 	width: 800,
-	// 	height: 600,
-	// 	show: false,
-	// 	minimizable: true,
-	// 	webPreferences: {
-	// 		nodeIntegration: true,
-	// 	},
-	// });
-	// mainWindow.loadFile("src/index.html");
 	app.dock.hide();
 
 	const iconPath = path.join(__dirname, "../public/assets/icon.png");
@@ -202,12 +199,6 @@ app.whenReady().then(() => {
 	icon.resize({ width: 16, height: 16 });
 	tray = new Tray(icon);
 
-	// make a context menu that has the following,
-	// - a title
-	// - a quit button
-	// - a status indicator to show if loggedIn is true ornot
-	// - a reconnect to discord button
-	// - open github repo button
 	attemptConnection(); // TODO: implement RECONNECT BUTTON
 
 	updateTray();
