@@ -8,7 +8,7 @@ import {
 } from "electron";
 import { Client } from "@xhayper/discord-rpc";
 const path = require("path");
-
+const autoUpdater = require("electron-updater");
 const express = require("express");
 
 const isSecondInstance = app.requestSingleInstanceLock();
@@ -158,6 +158,8 @@ app.whenReady().then(() => {
 	// mainWindow.on("closed", function () {
 	// 	// mainWindow = null;
 	// });
+
+	autoUpdater.checkForUpdatesAndNotify();
 });
 
 function closeServer() {
