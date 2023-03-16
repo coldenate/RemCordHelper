@@ -8,7 +8,6 @@ import {
 } from "electron";
 import { Client } from "@xhayper/discord-rpc";
 const path = require("path");
-const autoUpdater = require("electron-updater");
 const express = require("express");
 
 const isSecondInstance = app.requestSingleInstanceLock();
@@ -23,6 +22,10 @@ const appServer = express();
 const PORT = 3093;
 
 let serverInstance: any;
+
+let destroyed: boolean = false;
+let alive: boolean = true;
+let timeSinceHeartbeat: Date = new Date();
 
 client.on("ready", () => {
 	updateTray();
@@ -58,6 +61,21 @@ function attemptConnection(): void {
 	updateTray();
 }
 
+function checkHeartbeat() {
+	// console.log("Thump thump...");
+	// if the time since the last heartbeat is greater than 30 seconds, set alive to false, and destroy the client
+	if (new Date().getTime() - timeSinceHeartbeat.getTime() > 30000) {
+		alive = false;
+		client.destroy();
+		destroyed = true;
+		updateTray();
+	}
+	// console.log(`Alive: ${alive}`);
+}
+
+// Check heartbeat every 15 seconds
+// setInterval(checkHeartbeat, 15000);
+
 if (!isSecondInstance) {
 	app.quit();
 }
@@ -74,17 +92,61 @@ appServer.use((_req, res, next) => {
 	next();
 });
 
+appServer.post("/heartbeat", (req, res) => {
+	const json = req.body;
+	console.log("heartbeat");
+	if (json.heartbeat) {
+		// alive is true.
+		alive = true;
+		// set timeSinceHeartbeat to the current time
+		timeSinceHeartbeat = new Date();
+	}
+	res.json({ success: true });
+});
+
 appServer.post("/activity", (req, res) => {
 	const json = req.body;
-	if (json.destroy) {
+	// if json.destory is true or all of the values are empty strings and date is 0, destroy the client
+	if (
+		json.destroy ||
+		(json.details === "" &&
+			json.state === "" &&
+			json.date === 0 &&
+			json.largeImageKey === "" &&
+			json.largeImageText === "" &&
+			json.smallImageKey === "" &&
+			json.smallImageText === "")
+	) {
 		client.destroy();
+		destroyed = true;
+		updateTray();
+		res.json({ success: true });
+		return;
+	}
+
+	if (destroyed) {
+		attemptConnection();
+		destroyed = false;
+		// wait 5 seconds before setting the activity
+		setTimeout(() => {
+			client.user?.setActivity({
+				details: json.details,
+				state: json.state,
+				startTimestamp: new Date(json.date),
+				largeImageKey: json.largeImageKey,
+				largeImageText: json.largeImageText,
+				smallImageKey: json.smallImageKey,
+				smallImageText: json.smallImageText,
+				instance: false,
+			});
+		}, 3000);
 		res.json({ success: true });
 		return;
 	}
 	client.user?.setActivity({
 		details: json.details,
 		state: json.state,
-		startTimestamp: json.date,
+		startTimestamp: new Date(json.date),
 		largeImageKey: json.largeImageKey,
 		largeImageText: json.largeImageText,
 		smallImageKey: json.smallImageKey,
@@ -152,14 +214,7 @@ app.whenReady().then(() => {
 
 	serverInstance = appServer.listen(PORT, () => {
 		console.log(`Server listening on port ${PORT}`);
-		// mainWindow?.show();
 	});
-
-	// mainWindow.on("closed", function () {
-	// 	// mainWindow = null;
-	// });
-
-	autoUpdater.checkForUpdatesAndNotify();
 });
 
 function closeServer() {
