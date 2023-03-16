@@ -57,7 +57,7 @@ function checkHeartbeat() {
     // console.log(`Alive: ${alive}`);
 }
 // Check heartbeat every 15 seconds
-setInterval(checkHeartbeat, 15000);
+// setInterval(checkHeartbeat, 15000);
 if (!isSecondInstance) {
     electron_1.app.quit();
 }
