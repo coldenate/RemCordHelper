@@ -1,27 +1,66 @@
-import { app, BrowserWindow } from "electron";
+import {
+	app,
+	BrowserWindow,
+	nativeImage,
+	Tray,
+	Menu,
+	NativeImage,
+} from "electron";
 import { Client } from "@xhayper/discord-rpc";
+const path = require("path");
+
 const express = require("express");
 
 const isSecondInstance = app.requestSingleInstanceLock();
-
-if (!isSecondInstance) {
-	app.quit();
-}
+let loggedIn: boolean = false;
+let tray: Tray | null = null;
 
 const client = new Client({
 	clientId: "1083778386708676728",
 });
 
-client.on("ready", () => {
-	console.log("ready discord rpc");
-});
-
-client.login();
-
 const appServer = express();
 const PORT = 3093;
 
-let mainWindow: Electron.BrowserWindow | null;
+let serverInstance: any;
+
+client.on("ready", () => {
+	updateTray();
+	console.log("ready discord rpc");
+});
+
+client.on("connected", () => {
+	updateTray();
+	loggedIn = true;
+});
+
+client.on("disconnected", () => {
+	updateTray();
+	loggedIn = false;
+});
+
+function attemptConnection(): void {
+	console.log("attempting connection");
+	// log loggedIN to console and say what it is
+	console.log("loggedIn: ", loggedIn);
+	if (!loggedIn) {
+		// where the actual login packets are sent. if log in has an error, catch it and set loggedIn to false
+		client
+			.login()
+			.catch((err) => {
+				console.log(err);
+				loggedIn = false;
+			})
+			.then(() => {
+				loggedIn = true;
+			});
+	}
+	updateTray();
+}
+
+if (!isSecondInstance) {
+	app.quit();
+}
 
 appServer.use(express.json());
 
@@ -55,52 +94,76 @@ appServer.post("/activity", (req, res) => {
 	res.json({ success: true });
 });
 
-function createWindow() {
-	mainWindow = new BrowserWindow({
-		width: 800,
-		height: 600,
-		show: false,
-		minimizable: true,
-		webPreferences: {
-			nodeIntegration: true,
+function updateTray() {
+	const contextMenu = Menu.buildFromTemplate([
+		{
+			label: "Discord Rich Presence",
+			enabled: false,
 		},
-	});
-	mainWindow.loadFile("src/index.html");
+		{
+			label: "Quit",
+			click: () => {
+				app.quit();
+			},
+		},
+		{
+			label: `Status: ${loggedIn ? "Connected" : "Disconnected"}`,
+			enabled: false,
+		},
+		{
+			label: "Reconnect",
+			click: () => {
+				attemptConnection();
+			},
+		},
+	]);
 
-	appServer.listen(PORT, () => {
-		console.log(`Server listening on port ${PORT}`);
-		mainWindow?.show();
-	});
-
-	mainWindow.on("closed", function () {
-		mainWindow = null;
-	});
+	tray.setToolTip("RemCord Rich Presence");
+	tray.setContextMenu(contextMenu);
 }
 
+app.whenReady().then(() => {
+	// mainWindow = new BrowserWindow({
+	// 	width: 800,
+	// 	height: 600,
+	// 	show: false,
+	// 	minimizable: true,
+	// 	webPreferences: {
+	// 		nodeIntegration: true,
+	// 	},
+	// });
+	// mainWindow.loadFile("src/index.html");
+	app.dock.hide();
+
+	const iconPath = path.join(__dirname, "../public/assets/icon.png");
+	const icon = nativeImage.createFromPath(iconPath);
+	icon.resize({ width: 16, height: 16 });
+	tray = new Tray(icon);
+
+	// make a context menu that has the following,
+	// - a title
+	// - a quit button
+	// - a status indicator to show if loggedIn is true ornot
+	// - a reconnect to discord button
+	// - open github repo button
+	attemptConnection(); // TODO: implement RECONNECT BUTTON
+
+	updateTray();
+
+	serverInstance = appServer.listen(PORT, () => {
+		console.log(`Server listening on port ${PORT}`);
+		// mainWindow?.show();
+	});
+
+	// mainWindow.on("closed", function () {
+	// 	// mainWindow = null;
+	// });
+});
+
 function closeServer() {
-	appServer.close();
+	serverInstance.close();
 }
 
 app.on("before-quit", () => {
 	closeServer();
-});
-
-app.on("quit", () => {
-	closeServer();
-});
-
-app.on("ready", createWindow);
-
-app.on("window-all-closed", function () {
-	if (process.platform !== "darwin") {
-		app.quit();
-	}
-});
-
-app.on("activate", function () {
-	if (mainWindow === null) {
-		createWindow();
-	} else {
-		mainWindow.show();
-	}
 });

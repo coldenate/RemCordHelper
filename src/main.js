@@ -2,21 +2,49 @@
 exports.__esModule = true;
 var electron_1 = require("electron");
 var discord_rpc_1 = require("@xhayper/discord-rpc");
+var path = require("path");
 var express = require("express");
 var isSecondInstance = electron_1.app.requestSingleInstanceLock();
-if (!isSecondInstance) {
-    electron_1.app.quit();
-}
+var loggedIn = false;
+var tray = null;
 var client = new discord_rpc_1.Client({
     clientId: "1083778386708676728"
 });
-client.on("ready", function () {
-    console.log("ready discord rpc");
-});
-client.login();
 var appServer = express();
 var PORT = 3093;
-var mainWindow;
+var serverInstance;
+client.on("ready", function () {
+    updateTray();
+    console.log("ready discord rpc");
+});
+client.on("connected", function () {
+    updateTray();
+    loggedIn = true;
+});
+client.on("disconnected", function () {
+    updateTray();
+    loggedIn = false;
+});
+function attemptConnection() {
+    console.log("attempting connection");
+    // log loggedIN to console and say what it is
+    console.log("loggedIn: ", loggedIn);
+    if (!loggedIn) {
+        // where the actual login packets are sent. if log in has an error, catch it and set loggedIn to false
+        client
+            .login()["catch"](function (err) {
+            console.log(err);
+            loggedIn = false;
+        })
+            .then(function () {
+            loggedIn = true;
+        });
+    }
+    updateTray();
+}
+if (!isSecondInstance) {
+    electron_1.app.quit();
+}
 appServer.use(express.json());
 appServer.use(function (_req, res, next) {
     res.header("Access-Control-Allow-Origin", "*");
@@ -44,45 +72,67 @@ appServer.post("/activity", function (req, res) {
     });
     res.json({ success: true });
 });
-function createWindow() {
-    mainWindow = new electron_1.BrowserWindow({
-        width: 800,
-        height: 600,
-        show: false,
-        minimizable: true,
-        webPreferences: {
-            nodeIntegration: true
-        }
-    });
-    mainWindow.loadFile("src/index.html");
-    appServer.listen(PORT, function () {
-        console.log("Server listening on port ".concat(PORT));
-        mainWindow === null || mainWindow === void 0 ? void 0 : mainWindow.show();
-    });
-    mainWindow.on("closed", function () {
-        mainWindow = null;
-    });
+function updateTray() {
+    var contextMenu = electron_1.Menu.buildFromTemplate([
+        {
+            label: "Discord Rich Presence",
+            enabled: false
+        },
+        {
+            label: "Quit",
+            click: function () {
+                electron_1.app.quit();
+            }
+        },
+        {
+            label: "Status: ".concat(loggedIn ? "Connected" : "Disconnected"),
+            enabled: false
+        },
+        {
+            label: "Reconnect",
+            click: function () {
+                attemptConnection();
+            }
+        },
+    ]);
+    tray.setToolTip("RemCord Rich Presence");
+    tray.setContextMenu(contextMenu);
 }
+electron_1.app.whenReady().then(function () {
+    // mainWindow = new BrowserWindow({
+    // 	width: 800,
+    // 	height: 600,
+    // 	show: false,
+    // 	minimizable: true,
+    // 	webPreferences: {
+    // 		nodeIntegration: true,
+    // 	},
+    // });
+    // mainWindow.loadFile("src/index.html");
+    electron_1.app.dock.hide();
+    var iconPath = path.join(__dirname, "../public/assets/icon.png");
+    var icon = electron_1.nativeImage.createFromPath(iconPath);
+    icon.resize({ width: 16, height: 16 });
+    tray = new electron_1.Tray(icon);
+    // make a context menu that has the following,
+    // - a title
+    // - a quit button
+    // - a status indicator to show if loggedIn is true ornot
+    // - a reconnect to discord button
+    // - open github repo button
+    attemptConnection(); // TODO: implement RECONNECT BUTTON
+    updateTray();
+    serverInstance = appServer.listen(PORT, function () {
+        console.log("Server listening on port ".concat(PORT));
+        // mainWindow?.show();
+    });
+    // mainWindow.on("closed", function () {
+    // 	// mainWindow = null;
+    // });
+});
 function closeServer() {
-    appServer.close();
+    serverInstance.close();
 }
 electron_1.app.on("before-quit", function () {
     closeServer();
-});
-electron_1.app.on("quit", function () {
-    closeServer();
-});
-electron_1.app.on("ready", createWindow);
-electron_1.app.on("window-all-closed", function () {
-    if (process.platform !== "darwin") {
-        electron_1.app.quit();
-    }
-});
-electron_1.app.on("activate", function () {
-    if (mainWindow === null) {
-        createWindow();
-    }
-    else {
-        mainWindow.show();
-    }
 });

@@ -2,10 +2,7 @@
 <html>
 	<head>
 		<meta charset="UTF-8" />
-		<meta
-			http-equiv="Content-Security-Policy"
-			content="default-src 'self'; script-src 'self' https://cdn.tailwindcss.com; style-src 'self' 'unsafe-inline'"
-		/>
+		<meta http-equiv="Content-Security-Policy" />
 		<link href="./styles.css" rel="stylesheet" />
 		<title>remcord helper</title>
 		<script src="https://cdn.tailwindcss.com"></script>
@@ -23,5 +20,12 @@
 			Leave this App running in the background for the Helper Function to
 			stay alive!
 		</p>
+		<!-- make a button that runs the function in main.js attemptConnection(). give it a class recon-button -->
+		<button
+			class="recon-button bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-8"
+			id="recon-button"
+		>
+			Reconnect
+		</button>
 	</body>
 </html>
