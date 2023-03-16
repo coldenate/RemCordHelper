@@ -27,10 +27,15 @@ appServer.use(function (_req, res, next) {
 appServer.post("/activity", function (req, res) {
     var _a;
     var json = req.body;
+    if (json.destroy) {
+        client.destroy();
+        res.json({ success: true });
+        return;
+    }
     (_a = client.user) === null || _a === void 0 ? void 0 : _a.setActivity({
         details: json.details,
         state: json.state,
-        startTimestamp: Date.now(),
+        startTimestamp: json.date,
         largeImageKey: json.largeImageKey,
         largeImageText: json.largeImageText,
         smallImageKey: json.smallImageKey,

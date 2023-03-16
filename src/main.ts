@@ -37,10 +37,15 @@ appServer.use((_req, res, next) => {
 
 appServer.post("/activity", (req, res) => {
 	const json = req.body;
+	if (json.destroy) {
+		client.destroy();
+		res.json({ success: true });
+		return;
+	}
 	client.user?.setActivity({
 		details: json.details,
 		state: json.state,
-		startTimestamp: Date.now(),
+		startTimestamp: json.date,
 		largeImageKey: json.largeImageKey,
 		largeImageText: json.largeImageText,
 		smallImageKey: json.smallImageKey,
