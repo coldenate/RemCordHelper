@@ -22,8 +22,9 @@ jobs:
         with:
           tag_name: ${{ github.ref }}
           draft: true
+          token: ${{ secrets.github_token }}
           prerelease: false
-          name: Release ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
           body: |
             Release ${{ github.ref }}
             ---
@@ -39,4 +40,4 @@ jobs:
         with:
           args: --publish always --prerelease
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.github_token }}
