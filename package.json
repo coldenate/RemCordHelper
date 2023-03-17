@@ -7,7 +7,7 @@
 	"description": "A helper application for the RemCord Discord RPC connection to Remnote.",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/coldenate/remcord/tree/main/RemCordPlugin"
+		"url": "https://github.com/coldenate/remcordhelper"
 	},
 	"devDependencies": {
 		"electron": "^23.1.4",
