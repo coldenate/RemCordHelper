@@ -187,12 +187,18 @@ function updateTray() {
 		},
 	]);
 
+	// if tray is null, return
+	if (tray === null) {
+		return;
+	}
 	tray.setToolTip("RemCord Rich Presence");
 	tray.setContextMenu(contextMenu);
 }
 
 app.whenReady().then(() => {
-	app.dock.hide();
+	if (process.platform === "darwin") {
+		app.dock.hide();
+	}
 
 	const iconPath = path.join(__dirname, "../public/assets/icon.png");
 	const icon = nativeImage.createFromPath(iconPath);
