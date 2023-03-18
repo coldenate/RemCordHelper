@@ -5,42 +5,42 @@ var discord_rpc_1 = require("@xhayper/discord-rpc");
 var path = require("path");
 var express = require("express");
 var isSecondInstance = electron_1.app.requestSingleInstanceLock();
-var loggedIn = false;
+var discordRPCLoggedIn = null;
+var remnotePluginAlive = null;
 var tray = null;
+var destroyed = false;
+var timeSinceHeartbeat = new Date();
 var client = new discord_rpc_1.Client({
     clientId: "1083778386708676728"
 });
 var appServer = express();
 var PORT = 3093;
 var serverInstance;
-var destroyed = false;
-var alive = true;
-var timeSinceHeartbeat = new Date();
 client.on("ready", function () {
     updateTray();
     console.log("ready discord rpc");
 });
 client.on("connected", function () {
     updateTray();
-    loggedIn = true;
+    discordRPCLoggedIn = true;
 });
 client.on("disconnected", function () {
     updateTray();
-    loggedIn = false;
+    discordRPCLoggedIn = false;
 });
 function attemptConnection() {
     console.log("attempting connection");
     // log loggedIN to console and say what it is
-    console.log("loggedIn: ", loggedIn);
-    if (!loggedIn) {
+    console.log("loggedIn: ", discordRPCLoggedIn);
+    if (!discordRPCLoggedIn) {
         // where the actual login packets are sent. if log in has an error, catch it and set loggedIn to false
         client
             .login()["catch"](function (err) {
             console.log(err);
-            loggedIn = false;
+            discordRPCLoggedIn = false;
         })
             .then(function () {
-            loggedIn = true;
+            discordRPCLoggedIn = true;
         });
     }
     updateTray();
@@ -49,7 +49,7 @@ function checkHeartbeat() {
     // console.log("Thump thump...");
     // if the time since the last heartbeat is greater than 30 seconds, set alive to false, and destroy the client
     if (new Date().getTime() - timeSinceHeartbeat.getTime() > 30000) {
-        alive = false;
+        remnotePluginAlive = false;
         client.destroy();
         destroyed = true;
         updateTray();
@@ -68,15 +68,19 @@ appServer.use(function (_req, res, next) {
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     next();
 });
+appServer.get("/version", function (req, res) {
+    res.json({ version: electron_1.app.getVersion() });
+});
 appServer.post("/heartbeat", function (req, res) {
     var json = req.body;
     if (json.heartbeat) {
         // alive is true.
-        alive = true;
+        remnotePluginAlive = true;
         // set timeSinceHeartbeat to the current time
         timeSinceHeartbeat = new Date();
     }
     res.json({ success: true });
+    attemptConnection();
 });
 appServer.post("/activity", function (req, res) {
     var _a;
@@ -129,6 +133,7 @@ appServer.post("/activity", function (req, res) {
     res.json({ success: true });
 });
 function updateTray() {
+    // if a value is true, it is Connected, if it is false, it is Disconnected, if it is null, it is Connecting...
     var contextMenu = electron_1.Menu.buildFromTemplate([
         {
             label: "Discord Rich Presence",
@@ -141,7 +146,11 @@ function updateTray() {
             }
         },
         {
-            label: "Discord RPC Status: ".concat(loggedIn ? "Connected" : "Disconnected"),
+            label: "Discord RPC Status: ".concat(discordRPCLoggedIn === null
+                ? "Connecting..."
+                : discordRPCLoggedIn
+                    ? "Connected"
+                    : "Disconnected"),
             enabled: false
         },
         {
@@ -151,15 +160,25 @@ function updateTray() {
             }
         },
         {
-            label: "RemNote Connection Status: ".concat(alive ? "Connected" : "Disconnected"),
+            label: "RemNote Connection Status: ".concat(remnotePluginAlive === null
+                ? "Connecting..."
+                : remnotePluginAlive
+                    ? "Connected"
+                    : "Disconnected"),
             enabled: false
         },
     ]);
+    // if tray is null, return
+    if (tray === null) {
+        return;
+    }
     tray.setToolTip("RemCord Rich Presence");
     tray.setContextMenu(contextMenu);
 }
 electron_1.app.whenReady().then(function () {
-    electron_1.app.dock.hide();
+    if (process.platform === "darwin") {
+        electron_1.app.dock.hide();
+    }
     var iconPath = path.join(__dirname, "../public/assets/icon.png");
     var icon = electron_1.nativeImage.createFromPath(iconPath);
     icon.resize({ width: 16, height: 16 });

@@ -11,8 +11,11 @@ const path = require("path");
 const express = require("express");
 
 const isSecondInstance = app.requestSingleInstanceLock();
-let loggedIn: boolean = false;
+let discordRPCLoggedIn: boolean = null;
+let remnotePluginAlive: boolean = null;
 let tray: Tray | null = null;
+let destroyed: boolean = false;
+let timeSinceHeartbeat: Date = new Date();
 
 const client = new Client({
 	clientId: "1083778386708676728",
@@ -23,10 +26,6 @@ const PORT = 3093;
 
 let serverInstance: any;
 
-let destroyed: boolean = false;
-let alive: boolean = true;
-let timeSinceHeartbeat: Date = new Date();
-
 client.on("ready", () => {
 	updateTray();
 	console.log("ready discord rpc");
@@ -34,28 +33,28 @@ client.on("ready", () => {
 
 client.on("connected", () => {
 	updateTray();
-	loggedIn = true;
+	discordRPCLoggedIn = true;
 });
 
 client.on("disconnected", () => {
 	updateTray();
-	loggedIn = false;
+	discordRPCLoggedIn = false;
 });
 
 function attemptConnection(): void {
 	console.log("attempting connection");
 	// log loggedIN to console and say what it is
-	console.log("loggedIn: ", loggedIn);
-	if (!loggedIn) {
+	console.log("loggedIn: ", discordRPCLoggedIn);
+	if (!discordRPCLoggedIn) {
 		// where the actual login packets are sent. if log in has an error, catch it and set loggedIn to false
 		client
 			.login()
 			.catch((err) => {
 				console.log(err);
-				loggedIn = false;
+				discordRPCLoggedIn = false;
 			})
 			.then(() => {
-				loggedIn = true;
+				discordRPCLoggedIn = true;
 			});
 	}
 	updateTray();
@@ -65,7 +64,7 @@ function checkHeartbeat() {
 	// console.log("Thump thump...");
 	// if the time since the last heartbeat is greater than 30 seconds, set alive to false, and destroy the client
 	if (new Date().getTime() - timeSinceHeartbeat.getTime() > 30000) {
-		alive = false;
+		remnotePluginAlive = false;
 		client.destroy();
 		destroyed = true;
 		updateTray();
@@ -92,15 +91,20 @@ appServer.use((_req, res, next) => {
 	next();
 });
 
+appServer.get("/version", (req, res) => {
+	res.json({ version: app.getVersion() });
+});
+
 appServer.post("/heartbeat", (req, res) => {
 	const json = req.body;
 	if (json.heartbeat) {
 		// alive is true.
-		alive = true;
+		remnotePluginAlive = true;
 		// set timeSinceHeartbeat to the current time
 		timeSinceHeartbeat = new Date();
 	}
 	res.json({ success: true });
+	attemptConnection();
 });
 
 appServer.post("/activity", (req, res) => {
@@ -156,6 +160,7 @@ appServer.post("/activity", (req, res) => {
 });
 
 function updateTray() {
+	// if a value is true, it is Connected, if it is false, it is Disconnected, if it is null, it is Connecting...
 	const contextMenu = Menu.buildFromTemplate([
 		{
 			label: "Discord Rich Presence",
@@ -169,7 +174,11 @@ function updateTray() {
 		},
 		{
 			label: `Discord RPC Status: ${
-				loggedIn ? "Connected" : "Disconnected"
+				discordRPCLoggedIn === null
+					? "Connecting..."
+					: discordRPCLoggedIn
+					? "Connected"
+					: "Disconnected"
 			}`,
 			enabled: false,
 		},
@@ -181,7 +190,11 @@ function updateTray() {
 		},
 		{
 			label: `RemNote Connection Status: ${
-				alive ? "Connected" : "Disconnected"
+				remnotePluginAlive === null
+					? "Connecting..."
+					: remnotePluginAlive
+					? "Connected"
+					: "Disconnected"
 			}`,
 			enabled: false,
 		},
