@@ -218,7 +218,7 @@ app.whenReady().then(() => {
 	icon.resize({ width: 16, height: 16 });
 	tray = new Tray(icon);
 
-	attemptConnection(); // TODO: implement RECONNECT BUTTON
+	attemptConnection();
 
 	updateTray();
 

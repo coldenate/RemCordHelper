@@ -10,6 +10,7 @@ var remnotePluginAlive = null;
 var tray = null;
 var destroyed = false;
 var timeSinceHeartbeat = new Date();
+var firstLogin = true;
 var client = new discord_rpc_1.Client({
     clientId: "1083778386708676728"
 });
