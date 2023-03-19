@@ -163,7 +163,7 @@ function updateTray() {
 	// if a value is true, it is Connected, if it is false, it is Disconnected, if it is null, it is Connecting...
 	const contextMenu = Menu.buildFromTemplate([
 		{
-			label: "Discord Rich Presence",
+			label: `Discord Rich Presence v${app.getVersion()}`,
 			enabled: false,
 		},
 		{

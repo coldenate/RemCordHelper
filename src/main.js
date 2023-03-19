@@ -10,7 +10,6 @@ var remnotePluginAlive = null;
 var tray = null;
 var destroyed = false;
 var timeSinceHeartbeat = new Date();
-var firstLogin = true;
 var client = new discord_rpc_1.Client({
     clientId: "1083778386708676728"
 });
@@ -137,7 +136,7 @@ function updateTray() {
     // if a value is true, it is Connected, if it is false, it is Disconnected, if it is null, it is Connecting...
     var contextMenu = electron_1.Menu.buildFromTemplate([
         {
-            label: "Discord Rich Presence",
+            label: "Discord Rich Presence v".concat(electron_1.app.getVersion()),
             enabled: false
         },
         {
@@ -184,7 +183,7 @@ electron_1.app.whenReady().then(function () {
     var icon = electron_1.nativeImage.createFromPath(iconPath);
     icon.resize({ width: 16, height: 16 });
     tray = new electron_1.Tray(icon);
-    attemptConnection(); // TODO: implement RECONNECT BUTTON
+    attemptConnection();
     updateTray();
     serverInstance = appServer.listen(PORT, function () {
         console.log("Server listening on port ".concat(PORT));
