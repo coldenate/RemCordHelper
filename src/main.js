@@ -16,6 +16,7 @@ var client = new discord_rpc_1.Client({
 var appServer = express();
 var PORT = 3093;
 var serverInstance;
+// TODO: ADD NEW LOGO
 client.on("ready", function () {
     updateTray();
     console.log("ready discord rpc");

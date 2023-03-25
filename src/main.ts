@@ -26,6 +26,8 @@ const PORT = 3093;
 
 let serverInstance: any;
 
+// TODO: ADD NEW LOGO
+
 client.on("ready", () => {
 	updateTray();
 	console.log("ready discord rpc");
