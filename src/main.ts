@@ -64,8 +64,8 @@ function attemptConnection(): void {
 
 function checkHeartbeat() {
 	// console.log("Thump thump...");
-	// if the time since the last heartbeat is greater than 30 seconds, set alive to false, and destroy the client
-	if (new Date().getTime() - timeSinceHeartbeat.getTime() > 30000) {
+	// if the time since the last heartbeat is greater than 5 seconds, set alive to false, and destroy the client
+	if (new Date().getTime() - timeSinceHeartbeat.getTime() > 5000) {
 		remnotePluginAlive = false;
 		client.destroy();
 		destroyed = true;
@@ -74,8 +74,8 @@ function checkHeartbeat() {
 	// console.log(`Alive: ${alive}`);
 }
 
-// Check heartbeat every 15 seconds
-setInterval(checkHeartbeat, 15000);
+// Check heartbeat every 2.5 seconds
+setInterval(checkHeartbeat, 2500);
 
 if (!isSecondInstance) {
 	app.quit();
