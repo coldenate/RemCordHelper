@@ -1,12 +1,6 @@
-import {
-	app,
-	BrowserWindow,
-	nativeImage,
-	Tray,
-	Menu,
-	NativeImage,
-} from "electron";
+import { app, nativeImage, Tray, Menu, dialog } from "electron";
 import { Client } from "@xhayper/discord-rpc";
+const { autoUpdater, AppUpdater } = require("electron-updater");
 const path = require("path");
 const express = require("express");
 
@@ -16,6 +10,22 @@ let remnotePluginAlive: boolean = null;
 let tray: Tray | null = null;
 let destroyed: boolean = false;
 let timeSinceHeartbeat: Date = new Date();
+let isUpdate: boolean = false; // a variable to check if the app needs to be updated if null, it is currently checking
+let updatePackageReady: boolean = false; // a variable to check if the update package is ready to be installed
+let progress: number | string | null = null; // a variable to check the progress of the update
+// var cmd = process.argv[1];
+
+autoUpdater.autoDownload = false;
+autoUpdater.autoInstallOnAppQuit = true;
+
+let firstRun = false;
+
+// if (cmd == "--squirrel-firstrun") {
+
+// 	// do NOT run the autoupdater
+
+// 	firstRun = true;
+// }
 
 const client = new Client({
 	clientId: "1083778386708676728",
@@ -24,10 +34,42 @@ const client = new Client({
 const appServer = express();
 const PORT = 3093;
 
+autoUpdater.on("update-available", () => {
+	isUpdate = true;
+	// if no error, set updatePackageReady to true when its done
+	let pth = autoUpdater
+		.downloadUpdate()
+		.catch((err) => {
+			console.log(err);
+		})
+		.then(() => {
+			updatePackageReady = true;
+		});
+
+	updateTray();
+});
+
+autoUpdater.on("update-not-available", () => {
+	isUpdate = false;
+	updateTray();
+});
+
+autoUpdater.on("update-available", () => {
+	isUpdate = true;
+	updateTray();
+});
+
+autoUpdater.on("update-downloaded", () => {
+	updatePackageReady = true;
+	updateTray();
+});
+
+autoUpdater.on("error", () => {
+	isUpdate = false;
+	updateTray();
+});
+
 let serverInstance: any;
-
-// TODO: ADD NEW LOGO
-
 client.on("ready", () => {
 	updateTray();
 	console.log("ready discord rpc");
@@ -130,6 +172,7 @@ appServer.post("/activity", (req, res) => {
 	}
 
 	if (destroyed) {
+		console.log("destroyed!");
 		attemptConnection();
 		destroyed = false;
 		// wait 5 seconds before setting the activity
@@ -170,9 +213,40 @@ function updateTray() {
 		},
 		{
 			label: "Quit",
+			accelerator: "Command+Q",
 			click: () => {
 				app.quit();
 			},
+		},
+		{
+			label: "Check for Updates",
+			accelerator: "Command+U",
+			click: () => {
+				autoUpdater.checkForUpdates();
+			},
+		},
+		{
+			label: "Install Update",
+			enabled: true,
+			visible: updatePackageReady,
+			click: () => {
+				autoUpdater.quitAndInstall();
+
+				// app.quit();
+			},
+		},
+		{
+			label: `Update Status: ${
+				// display if the update is available or not
+				// display if the update is installing, and if it is, display the progress
+				isUpdate
+					? "Available"
+					: progress !== null
+					? `Installing (${Math.round((progress as number) * 100)}%)`
+					: "Not Available"
+			}`,
+			enabled: false,
+			visible: true,
 		},
 		{
 			label: `Discord RPC Status: ${
@@ -186,6 +260,7 @@ function updateTray() {
 		},
 		{
 			label: "Reconnect to Discord",
+			accelerator: "Command+R",
 			click: () => {
 				attemptConnection();
 			},
@@ -213,7 +288,10 @@ function updateTray() {
 app.whenReady().then(() => {
 	if (process.platform === "darwin") {
 		app.dock.hide();
+		// if not firstRun, run autoUpdater.checkForUpdatesAndNotify()
 	}
+
+	autoUpdater.checkForUpdates();
 
 	const iconPath = path.join(__dirname, "../public/assets/icon.png");
 	const icon = nativeImage.createFromPath(iconPath);
