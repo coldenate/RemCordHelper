@@ -1,40 +1,40 @@
 name: Build and Publish Electron App
 
 on:
-  push:
-    tags:
-      - 'v*'
+    push:
+        tags:
+            - "*"
 
-  workflow_dispatch:
+    workflow_dispatch:
 
 jobs:
-  release:
-    runs-on: ${{ matrix.os }}
+    release:
+        runs-on: ${{ matrix.os }}
 
-    strategy:
-      matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        strategy:
+            matrix:
+                os: [macos-latest, ubuntu-latest, windows-latest]
 
-    steps:
-      - name: Check out Git repository
-        uses: actions/checkout@v1
+        steps:
+            - name: Check out Git repository
+              uses: actions/checkout@v1
 
-      - name: Install Node.js, NPM and Yarn
-        uses: actions/setup-node@v1
-        with:
-          node-version: 19
+            - name: Install Node.js, NPM and Yarn
+              uses: actions/setup-node@v1
+              with:
+                  node-version: 19
 
-      - name: Build/release Electron app
-        uses: samuelmeuli/action-electron-builder@v1
-        with:
-          # GitHub token, automatically provided to the action
-          # (No need to define this secret in the repo settings)
-          github_token: ${{ secrets.github_token }}
+            - name: Build/release Electron app
+              uses: samuelmeuli/action-electron-builder@v1
+              with:
+                  # GitHub token, automatically provided to the action
+                  # (No need to define this secret in the repo settings)
+                  github_token: ${{ secrets.github_token }}
 
-          # # macOS code signing certificate
-          # mac_certs: ${{ secrets.mac_certs }}
-          # mac_certs_password: ${{ secrets.mac_certs_password }}
+                  # # macOS code signing certificate
+                  # mac_certs: ${{ secrets.mac_certs }}
+                  # mac_certs_password: ${{ secrets.mac_certs_password }}
 
-          # If the commit is tagged with a version (e.g. "v1.0.0"),
-          # release the app after building
-          release: true
+                  # If the commit is tagged with a version (e.g. "v1.0.0"),
+                  # release the app after building
+                  release: true
