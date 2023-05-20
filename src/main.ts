@@ -20,13 +20,6 @@ autoUpdater.autoInstallOnAppQuit = true;
 
 let firstRun = false;
 
-// if (cmd == "--squirrel-firstrun") {
-
-// 	// do NOT run the autoupdater
-
-// 	firstRun = true;
-// }
-
 const client = new Client({
 	clientId: "1083778386708676728",
 });
@@ -40,7 +33,7 @@ autoUpdater.on("update-available", () => {
 	let pth = autoUpdater
 		.downloadUpdate()
 		.catch((err) => {
-			console.log(err);
+			console.error(err);
 		})
 		.then(() => {
 			updatePackageReady = true;
@@ -72,7 +65,6 @@ autoUpdater.on("error", () => {
 let serverInstance: any;
 client.on("ready", () => {
 	updateTray();
-	console.log("ready discord rpc");
 });
 
 client.on("connected", () => {
@@ -86,20 +78,12 @@ client.on("disconnected", () => {
 });
 
 function attemptConnection(): void {
-	console.log("attempting connection");
-	// log loggedIN to console and say what it is
-	console.log("loggedIn: ", discordRPCLoggedIn);
 	if (!discordRPCLoggedIn) {
 		// where the actual login packets are sent. if log in has an error, catch it and set loggedIn to false
-		client
-			.login()
-			.catch((err) => {
-				console.log(err);
-				discordRPCLoggedIn = false;
-			})
-			.then(() => {
-				discordRPCLoggedIn = true;
-			});
+		client.login().catch((err) => {
+			// console.log(err);
+			discordRPCLoggedIn = false;
+		});
 	}
 	updateTray();
 }
@@ -172,7 +156,6 @@ appServer.post("/activity", (req, res) => {
 	}
 
 	if (destroyed) {
-		console.log("destroyed!");
 		attemptConnection();
 		destroyed = false;
 		// wait 5 seconds before setting the activity
@@ -212,6 +195,9 @@ function updateTray() {
 			enabled: false,
 		},
 		{
+			type: "separator",
+		},
+		{
 			label: "Quit",
 			accelerator: "Command+Q",
 			click: () => {
@@ -236,6 +222,9 @@ function updateTray() {
 			},
 		},
 		{
+			type: "separator",
+		},
+		{
 			label: `Update Status: ${
 				// display if the update is available or not
 				// display if the update is installing, and if it is, display the progress
@@ -249,6 +238,19 @@ function updateTray() {
 			visible: true,
 		},
 		{
+			type: "separator",
+		},
+		{
+			label: "Reconnect to Discord",
+			accelerator: "Command+R",
+			click: () => {
+				attemptConnection();
+			},
+		},
+		{
+			type: "separator",
+		},
+		{
 			label: `Discord RPC Status: ${
 				discordRPCLoggedIn === null
 					? "Connecting..."
@@ -257,13 +259,6 @@ function updateTray() {
 					: "Disconnected"
 			}`,
 			enabled: false,
-		},
-		{
-			label: "Reconnect to Discord",
-			accelerator: "Command+R",
-			click: () => {
-				attemptConnection();
-			},
 		},
 		{
 			label: `RemNote Connection Status: ${
@@ -288,12 +283,11 @@ function updateTray() {
 app.whenReady().then(() => {
 	if (process.platform === "darwin") {
 		app.dock.hide();
-		// if not firstRun, run autoUpdater.checkForUpdatesAndNotify()
 	}
 
 	autoUpdater.checkForUpdates();
 
-	const iconPath = path.join(__dirname, "../public/assets/icon.png");
+	const iconPath = path.join(__dirname, "../public/assets/iconTemplate.png");
 	const icon = nativeImage.createFromPath(iconPath);
 	icon.resize({ width: 16, height: 16 });
 	tray = new Tray(icon);
@@ -302,9 +296,7 @@ app.whenReady().then(() => {
 
 	updateTray();
 
-	serverInstance = appServer.listen(PORT, () => {
-		console.log(`Server listening on port ${PORT}`);
-	});
+	serverInstance = appServer.listen(PORT, () => {}); // added const keyword
 });
 
 function closeServer() {
