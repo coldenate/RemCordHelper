@@ -1,8 +1,10 @@
-import { app, nativeImage, Tray, Menu, dialog } from "electron";
+import { app, nativeImage, Tray, Menu } from "electron";
 import { Client } from "@xhayper/discord-rpc";
-const { autoUpdater, AppUpdater } = require("electron-updater");
+const Store = require("electron-store");
+const { autoUpdater } = require("electron-updater");
 const path = require("path");
 const express = require("express");
+const store = new Store();
 
 const isSecondInstance = app.requestSingleInstanceLock();
 let discordRPCLoggedIn: boolean = null;
@@ -13,7 +15,12 @@ let timeSinceHeartbeat: Date = new Date();
 let isUpdate: boolean = false; // a variable to check if the app needs to be updated if null, it is currently checking
 let updatePackageReady: boolean = false; // a variable to check if the update package is ready to be installed
 let progress: number | string | null = null; // a variable to check the progress of the update
-// var cmd = process.argv[1];
+let launchOnStartupMenuItem: Electron.MenuItem;
+
+// if that is null store the value as false
+if (store.get("launchOnStartup", null) === null) {
+	store.set("launchOnStartup", false);
+}
 
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = true;
@@ -26,7 +33,6 @@ const client = new Client({
 
 const appServer = express();
 const PORT = 3093;
-
 autoUpdater.on("update-available", () => {
 	isUpdate = true;
 	// if no error, set updatePackageReady to true when its done
@@ -186,7 +192,6 @@ appServer.post("/activity", (req, res) => {
 	});
 	res.json({ success: true });
 });
-
 function updateTray() {
 	// if a value is true, it is Connected, if it is false, it is Disconnected, if it is null, it is Connecting...
 	const contextMenu = Menu.buildFromTemplate([
@@ -204,6 +209,27 @@ function updateTray() {
 				app.quit();
 			},
 		},
+		{
+			label: "Launch on Startup",
+			type: "checkbox",
+			checked: Boolean(store.get("launchOnStartup", false)), // get the value from the user's settings
+			click: (menuItem) => {
+				store.set("launchOnStartup", menuItem.checked); // store the value in the user's settings
+				if (menuItem.checked) {
+					app.setLoginItemSettings({
+						openAtLogin: true,
+						name: app.name,
+					});
+				} else {
+					app.setLoginItemSettings({
+						openAtLogin: false,
+						name: app.name,
+					});
+				}
+				updateTray();
+			},
+		},
+
 		{
 			label: "Check for Updates",
 			accelerator: "Command+U",
