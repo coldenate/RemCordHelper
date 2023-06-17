@@ -1,5 +1,7 @@
 # RemCordHelper
 
+### This application is now deprecated. RemCord is now able to utilize API routes to manage Discord Rich Presence. Please check on your [RemCord](https://github.com/coldenate/RemCord) configuration.
+
 A helper application for the [RemCord](https://github.com/coldenate/RemCord) Discord RPC connection to [Remnote](https://www.remnote.io/).
 
 For usage, please refer to the [RemCord Repository](https://github.com/coldenate/RemCord)
